@@ -1,0 +1,2 @@
+# springboot_rabbitmq
+springboot整合rabbitmq测试
