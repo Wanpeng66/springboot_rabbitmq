@@ -1,0 +1,29 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /rabbitmq
+spring:
+  rabbitmq:
+    addresses: 127.0.0.1
+    username: guest
+    password: guest
+    virtual-host: /test
+    port: 5672
+    # 开启发送确认(生产者到exchange,无论成功与否都会有消息回调)
+    publisher-confirms: true
+    # 开启发送失败退回(消息从exchange到queue,失败则退回queue,需设置template的mandatory=true,否则不会回调,消息就丢了)
+    publisher-returns: true
+    listener:
+      simple:
+      # 开启消息监听容器的手动ACK
+        acknowledge-mode: manual
+      # 消费者没应答前最多发送给消费者的消息数量 跟之前channle.basicQOS(1)效果一样;
+        prefetch: 1
+
+
+
+
+
+
+
+
