@@ -52,7 +52,5 @@ public class Consumer2 {
             System.out.println("[queue03] 队列消息接收失败,丢弃");
             channel.basicNack( message.getMessageProperties().getDeliveryTag(),false,false );
         }
-
-
     }
 }

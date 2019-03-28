@@ -9,6 +9,8 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.ConditionalRejectingErrorHandler;
+import org.springframework.amqp.rabbit.listener.FatalExceptionStrategy;
 import org.springframework.amqp.rabbit.listener.RabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
@@ -28,7 +30,10 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.ErrorHandler;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -36,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author: wp
  * @Title: RabbitmqConfig
- * @Description: TODO
+ * @Description: TODO rabbitmq配置类
  * @date 2019/3/20 22:10
  */
 @EnableRabbit
@@ -65,7 +70,6 @@ public class RabbitmqConfig {
         RabbitTemplate template = new RabbitTemplate(cachingConnectionFactory);
         //设置mandatory=true,则如果消息从exchange到queue失败，会触发template的returnCallback方法，将消息退回
         template.setMandatory(true);
-
         return template;
     }
 
@@ -77,6 +81,12 @@ public class RabbitmqConfig {
         simple.setMaxConcurrentConsumers( 10 );
         simple.setAcknowledgeMode( AcknowledgeMode.MANUAL );
         simple.setPrefetchCount( 1 );
+        simple.setErrorHandler( new ConditionalRejectingErrorHandler( new FatalExceptionStrategy() {
+            @Override
+            public boolean isFatal( Throwable t ) {
+                return false;
+            }
+        } ) );
 
         return simple;
     }
@@ -97,6 +107,14 @@ public class RabbitmqConfig {
     }
 
     @Bean
+    public Queue deadQueue(){
+        Map<String,Object> args = new HashMap<>(  );
+        args.put( "x-dead-letter-exchange","topic_exchange" );
+        args.put( "x-dead-letter-routing-key","queue.01.02" );
+        return new Queue( "deadQueue",true,false,false,args );
+    }
+
+    @Bean
     public Exchange direct(){
         return new DirectExchange( "direct_exchange",true,false );
     }
@@ -114,6 +132,11 @@ public class RabbitmqConfig {
     @Bean
     public Binding binding01(){
         return new Binding( "queue01",Binding.DestinationType.QUEUE,"direct_exchange","queue01",null );
+    }
+
+    @Bean
+    public Binding deadBinding(){
+        return new Binding( "deadQueue",Binding.DestinationType.QUEUE,"direct_exchange","deadQueue",null );
     }
 
     @Bean
@@ -146,6 +169,8 @@ public class RabbitmqConfig {
         return new Binding( "queue03",Binding.DestinationType.QUEUE,"topic_exchange","queue.#",null );
     }
 
+
+
     //@Bean(name="simpleML")
    // @Primary
     public SimpleMessageListenerContainer simpleMessageListenerContainer(){
@@ -155,7 +180,6 @@ public class RabbitmqConfig {
         simpleMessageListenerContainer.setConnectionFactory( cachingConnectionFactory );
         simpleMessageListenerContainer.setConcurrentConsumers( 2 );
         simpleMessageListenerContainer.setMaxConcurrentConsumers( 10 );
-
         simpleMessageListenerContainer.setExposeListenerChannel( true );
         simpleMessageListenerContainer.setErrorHandler( new ErrorHandler() {
             @Override

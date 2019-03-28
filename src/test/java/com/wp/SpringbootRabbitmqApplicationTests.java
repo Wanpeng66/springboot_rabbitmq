@@ -115,5 +115,14 @@ public class SpringbootRabbitmqApplicationTests {
         rabbitTemplate.convertAndSend( "topic_exchange","queue.01.0244","topic",correlationData );
     }
 
+    @Test
+    public void testDeadQueue(){
+        MessageProperties properties = new MessageProperties();
+        properties.setDeliveryMode( MessageDeliveryMode.PERSISTENT );
+        properties.setExpiration( "10000" );
+        Message message = MessageBuilder.withBody( "死信队列".getBytes() ).andProperties( properties ).build();
+        rabbitTemplate.convertAndSend( "direct_exchange","deadQueue",message );
+    }
+
 
 }
